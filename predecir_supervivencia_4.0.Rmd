@@ -124,9 +124,9 @@ write.csv(datos_pr, "tree_survival_pr")
 
 Leyendo el artículo asociado a los datos, hemos obtenido varias hipótesis, las cuales, trataremos de comprobar estadísticamente. Estas hipótesis nos ayudarán a saber porque algunas de las plantas pueden llegar a sobrevivir en mayor proporción en condiciones de poca luz y que factores influyen en esto:   
 
-+**Hipótesis 1**: Existe una relación entre las concentraciones de **fenoles** y carbohidratos no estructurales (**NSC**) y la supervivencia de las plantas en sombra. 
++ **Hipótesis 1**: Existe una relación entre las concentraciones de **fenoles** y carbohidratos no estructurales (**NSC**) y la supervivencia de las plantas en sombra. 
 
-+**Hipótesis 2**: Los **AMF** producen en la planta un aumento en la concentración de **NSC**, y los microorganismos patógenos, un aumento en la concentración de fenoles.
++ **Hipótesis 2**: Los **AMF** producen en la planta un aumento en la concentración de **NSC**, y los microorganismos patógenos, un aumento en la concentración de fenoles.
 
 
 
