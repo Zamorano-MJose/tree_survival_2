@@ -65,15 +65,15 @@ summary(tree_survival)
 ```
 A partir de aquí, vamos a obtener el dataframe que se utilizó en el experimento, es decir, el que más observaciones tiene (1920). En primer lugar, vamos a instalar los paquetes necesarios que utilizaremos posteriormente. Comenzamos instalando los paquetes.
 
-<!--
-#```{r Instalación de paquetes, echo=TRUE, message=FALSE, warning=FALSE}
-#install.packages("dplyr")
-#install.packages("ggplot2")
-#install.packages("tidyverse")
+
+```{r Instalación de paquetes, echo=TRUE, message=FALSE, warning=FALSE}
+install.packages("dplyr")
+install.packages("ggplot2")
+install.packages("tidyverse")
 install.packages("tseries")
 install.packages("vegan")
 ``` 
-Los paquetes en nuestro caso ya están instalados, por lo que los vamos a comentar-->
+Los paquetes en nuestro caso ya están instalados, por lo que los vamos a comentar
 
 Cuando ya los tengo instalados, procedo a cargar los paquetes.
 
@@ -119,7 +119,6 @@ Tras esto observamos que no poseemos datos perdidos en ninguna variable y, por t
 write.csv(datos_pr, "tree_survival_pr")
 ```
 
-<br>
 
 ### Hipótesis 
 
