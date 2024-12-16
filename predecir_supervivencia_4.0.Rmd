@@ -405,7 +405,7 @@ wilcox.test(x = smallPHN$small, y = largePHN$large)
 
 Ahora hacemos un gráfico donde vemos que el tratamiento *large* tiene más fenoles que el *small* (con patógenos), lo cual, contradice nuestra hipótesis.
 
-```{r Representación gráfica tratamientos "large" y "small" , message=FALSE, echo=FALSE}
+```{r Representación gráfica tratamientos large y small , message=FALSE, echo=FALSE}
 hipo2.1 %>% ggplot(aes(y = PHN_Imp, x = Microbe, col = Microbe )) +
   geom_jitter(width = 0.2, show.legend = F, alpha = 0.6) +
   geom_boxplot(show.legend = F, width = 0.55) + # Elimino la leyenda. 
