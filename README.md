@@ -10,6 +10,8 @@ Los archivos de los que disponemos son:
 + **Tree_seedling_shade_tolerance_arises_from_interact.pdf:** artículo que detalla el procedimiento utilizado y el que se analizo en el experimento original.
 + **facultad_de_ciencias.png:** imagen en formato PNG del logo de la Facultad de ciencias de la Universidad de Córdoba (UCO).
 + **logo_UCO.png:** imagen en formato PNG del logo de la UCO.
++ **predecir_supervivencia.Rmd:** análisis realizado en formato RMarkdown.
++ **predecir_supervivencia.html:** resultado en html del codigo que hemos realizado con RMarkdown
 
 <br>
 
