@@ -85,12 +85,12 @@ library("tseries")
 library("vegan")
 ```
 
-Para obtener informacion hemos utilizado el articulo *Tree seedling shade tolerance arises from interactions with microbes and is mediated by functional traits* [wood2023tree].Hemos utilizado los paquetes **dplyr** [@R-dplyr], **R** [@R-base], **ggplot2** [@ggplot22016; @R-ggplot2], **knitr** [@R-knitr; @knitr2015; knitr2014] y **tidyverse** [@tidyverse2019]. Para realizar las pruebas estadísticas, hemos utilizado paquetes nuevos que no se dieron en clase. Los hemos instalado porque nos permiten realizar otras pruebas estadísticas que nos son de utilidad con nuestros datos. Con el paquete **<span style="color:blue">vegan</span>** [@R-vegan] usamos, por ejemplo, la función **adonis2** para hacer **PERMANOVAS** y con el paquete **<span style="color:blue">tseries</span>** [@R-tseries] utilizamos la prueba de normalidad **Jarque-Bera**. Además utilizamos el paquete **<span style="color:blue">stats</span>**, (con funciones cómo **shapiro.test** y **wilcox.test**) que ya viene preinstalado y cargado en R.  
+Para obtener informacion hemos utilizado el articulo *Tree seedling shade tolerance arises from interactions with microbes and is mediated by functional traits* [@wood2023tree].Hemos utilizado los paquetes **dplyr** [@R-dplyr], **R** [@R-base], **ggplot2** [@ggplot22016; @R-ggplot2], **knitr** [@R-knitr; @knitr2015; @knitr2014] y **tidyverse** [@tidyverse2019]. Para realizar las pruebas estadísticas, hemos utilizado paquetes nuevos que no se dieron en clase. Los hemos instalado porque nos permiten realizar otras pruebas estadísticas que nos son de utilidad con nuestros datos. Con el paquete **<span style="color:blue">vegan</span>** [@R-vegan] usamos, por ejemplo, la función **adonis2** para hacer **PERMANOVAS** y con el paquete **<span style="color:blue">tseries</span>** [@R-tseries] utilizamos la prueba de normalidad **Jarque-Bera**. Además utilizamos el paquete **<span style="color:blue">stats</span>**, (con funciones cómo **shapiro.test** y **wilcox.test**) que ya viene preinstalado y cargado en R.  
 
 
 Tengo ya los paquetes que serán de utilidad, por lo que ahora obtengo mi dataframe procesado.
 
-
+<br>
 
 ### Obtención del dataframe
 
@@ -119,6 +119,7 @@ Tras esto observamos que no poseemos datos perdidos en ninguna variable y, por t
 write.csv(datos_pr, "tree_survival_pr")
 ```
 
+<br>
 
 ### Hipótesis 
 
@@ -128,7 +129,7 @@ Leyendo el artículo asociado a los datos, hemos obtenido varias hipótesis, las
 
 + **Hipótesis 2**: Los **AMF** producen en la planta un aumento en la concentración de **NSC**, y los microorganismos patógenos, un aumento en la concentración de fenoles.
 
-
+<br>
 
 ### Análisis de datos
 
@@ -405,7 +406,7 @@ wilcox.test(x = smallPHN$small, y = largePHN$large)
 
 Ahora hacemos un gráfico donde vemos que el tratamiento *large* tiene más fenoles que el *small* (con patógenos), lo cual, contradice nuestra hipótesis.
 
-```{r, message=FALSE, echo=FALSE}
+```{r Representación gráfica tratamientos "large" y "small" , message=FALSE, echo=FALSE}
 hipo2.1 %>% ggplot(aes(y = PHN_Imp, x = Microbe, col = Microbe )) +
   geom_jitter(width = 0.2, show.legend = F, alpha = 0.6) +
   geom_boxplot(show.legend = F, width = 0.55) + # Elimino la leyenda. 
@@ -417,24 +418,24 @@ hipo2.1 %>% ggplot(aes(y = PHN_Imp, x = Microbe, col = Microbe )) +
 A continuación, hacemos lo mismo pero con los NSC:
 
 Al igual que antes al tener que hacer un **U-Mann-Whitney** (fenoles no paramétricos) tenemos que hacer dos datasets, en este caso con los NSC.
-```{r}
+```{r Creo variable 2.2.1}
 smallNSC <- hipo2.1 %>% transmute (small = if_else(Microbe == "Small", NSC_Imp, NA)) %>% 
   drop_na()
 ```
-```{r}
+```{r Creo variable 2.2.2}
 largeNSC <- hipo2.1 %>% transmute (large = if_else(Microbe == "Large", NSC_Imp, NA)) %>% 
   drop_na()
 ```
 
 Hacemos el test no paramétrico de **U-Mann-Whitney** y obtenemos un p-valor superior a 0.05, por lo que aceptamos la hipótesis nula. Esto implica que los tratamientos no son diferentes en cuanto los NSC, es decir, los NSC no cambian significativamente entre los tratamientos con patógenos y AMF.
 
-```{r, echo=FALSE, message=FALSE}
+```{r Análisis no parametrico NSC, echo=FALSE, message=FALSE}
 wilcox.test(x = smallNSC$small, y = largeNSC$large)
 ```
 
 Visualmente, se aprecian diferencias: *large* (AMF) tiene, ligeramente, más NSC, pero esta diferencia no es estadísticamente significativa.   
 
-```{r, message=FALSE, echo=FALSE}
+```{r Representación gráfica NSC por tratamiento, message=FALSE, echo=FALSE}
 hipo2.1 %>% ggplot(aes(y = NSC_Imp, x = Microbe, col = Microbe )) +
   geom_jitter(width = 0.2, show.legend = F, alpha = 0.6) +
   geom_boxplot(show.legend = F, width = 0.55) + # Elimino la leyenda.
