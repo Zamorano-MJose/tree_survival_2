@@ -11,7 +11,8 @@ Los archivos de los que disponemos son:
 + **facultad_de_ciencias.png:** imagen en formato PNG del logo de la Facultad de ciencias de la Universidad de Córdoba (UCO).
 + **logo_UCO.png:** imagen en formato PNG del logo de la UCO.
 + **predecir_supervivencia_definitivo.Rmd:** análisis realizado en formato RMarkdown.
-+ **predecir_supervivencia_definitivo.html:** resultado en html del codigo que hemos realizado con RMarkdown
++ **predecir_supervivencia_definitivo.html:** resultado en html del codigo que hemos realizado con RMarkdown.
++ **libraries.bib:** archivo para obtener las referencias, creado en la consola de RStudio.
 
 <br>
 
