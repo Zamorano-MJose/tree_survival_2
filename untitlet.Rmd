@@ -1,0 +1,512 @@
+---
+title: "Predecir la supervivencia de los árboles" 
+author: 
+  - Juan de Dios Castillo Calleja
+  - Carlos Diepa Santana
+  - María José Zamorano Poblete
+bibliography: [libraries.bib]
+link-citations: true
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+![](logo_UCO.png){width=10%}
+![](facultad_de_ciencias.png){width=10%}
+ 
+## Introducción
+
+En [kaggle](kaggle.com), se nos ha proporcionado la información de un estudio de la supervivencia de tres especies del género *Acer*, en el cual se estudiaron diferentes factores que podían influir en su supervivencia. Aquí se nos proporcionaba la base de datos del experimento, la información que aportaron los autores, y el artículo que se publicó analizando estos datos, que contenía más información sobre lo que se hizo. Por esto, sabemos que los datos están compuestos por 19 columnas que incluyen:
+
++ **No:** Identificador de las semillas.
++ **Species** Especies utilizadas, capaces de vivir en el mismo entorno, pero con diferente tolerancia a la luz. Las especies son:
+  - Acsa = *Acer saccharum*
+  - Acru = *Acer rubrum*
+  - Acne = *Acer negundo*
++ **Light:** Niveles de luz utilizados en el experimento. Los niveles son:
+  - Low = 2% luz directa
+  - High = 30% luz directa
++ **Microbe:** Microorganismos utilizados, se obtuvo un filtrado de estos y se aplicaron, obteniéndose cinco tratamientos, que fueron:
+  - Control: papel de filtro esterilizado.
+  - None: agua desionizada y papel de filtro.
+  - Small: 20 µm filtrado en agua desionizada y papel de filtro.
+  - Large: agua desionizada y 40-250 µm filtrado en papel de filtro.
+  - Combined: Small + Large, es decir, el filtrado estaba tanto en agua desionizada como en papel de filtro.
++ **Adult:** Número de árboles adultos que se utilizaron para recoger el suelo donde plantaron las semillas.
++ **Bench:** Número de la maceta donde se cultivó cada semilla.
++ **Harvest:** En qué semana fue cosechada la plántula para medir los datos. Pueden ser **3**, **6** o **9 semanas**.
++ **Time:** Día del experimento en el que la planta se cosechó, murió o terminó el experimento.
++ **Event:** Para analizar la supervivencia de las plántulas. Cada una se caracterizó como:
+  - 0 = utilizada en el experimento.
+  - 1 = muerta.
++ **AMF:** Porcentaje de colonización por los microorganismos. Calculado son los datos *AMFcount/AMFintersections*. Se basa en el número de colonias contadas en las raíces, en 100 intersecciones.
++ **Phenolics:** Calculado como nmol de ácido gálico equivalentes por mg de peso seco.
++ **NSC:** Calculado como porcentaje de peso seco compuesto por carbohidratos no estructurales.
++ **Lignin:** Porcentaje de masa seca que corresponde a la lignina.
++ **<span style="color:orange">AMF\_Imp:</span>** Valores de *AMF* imputados.
++ **<span style="color:orange">PHN\_Imp:</span>** Valores de *Phenolics* imputados.
++ **<span style="color:orange">NSC\_Imp:</span>** Valores de *NSC* imputados.
++ **<span style="color:orange">LIG\_Imp:</span>** Valores de *Lignin* imputados.
+
+Lo primero que hicimos fue visualizar los datos que habíamos obtenido. Para esto, creamos una variable donde leímos el archivo proporcionado, que tenía la extensión **".csv"**. A la variable la llamamos: **tree_survival**.
+
+```{r Lectura de datos, echo=TRUE, include=FALSE}
+tree_survival <- read.csv("Tree_Data.csv")
+```
+
+Posteriormente, tras haber obtenido la variable, analizamos la información de nuestro dataset. Para ello, averiguamos la dimensión y clase de nuestros datos. Tras conocer esto, vamos a ver la información relevante de los mismos.
+
+La base de datos del experimento es un *`r class(tree_survival)`* y sus dimensiones son de **`r nrow(tree_survival)` filas** y **`r ncol(tree_survival)` columnas**. Al comparar estas dimensiones, vemos que tiene 2400 observaciones, mientras que en el artículo nos habla de 1920. Al ver que tenemos datos imputados, conocemos entonces que hay <span style="color:red">datos perdidos</span> en el dataframe, por lo que vamos a visualizar la información de cada columna.
+
+```{r Analisis de las columnas, echo=TRUE}
+summary(tree_survival)
+```
+A partir de aquí, vamos a obtener el dataframe que se utilizó en el experimento, es decir, el que más observaciones tiene (1920). En primer lugar, vamos a instalar los paquetes necesarios que utilizaremos posteriormente. Comenzamos instalando los paquetes.
+
+
+```{r Instalación de paquetes, echo=TRUE, message=FALSE, warning=FALSE}
+#install.packages("dplyr")
+#install.packages("ggplot2")
+#install.packages("tidyverse")
+#install.packages("tseries")
+#install.packages("vegan")
+``` 
+<!-- Los paquetes en nuestro caso ya están instalados, por lo que los vamos a comentar--> 
+
+Cuando ya los tengo instalados, procedo a cargar los paquetes.
+
+```{r Cargamos los paquetes, echo=FALSE, message=FALSE, warning=FALSE}
+library("dplyr")
+library("ggplot2")
+library("tidyverse")
+library("tseries")
+library("vegan")
+```
+
+Para obtener informacion hemos utilizado el articulo *Tree seedling shade tolerance arises from interactions with microbes and is mediated by functional traits* [@wood2023tree].Hemos utilizado los paquetes **dplyr** [@R-dplyr], **R** [@R-base], **ggplot2** [@ggplot22016; @R-ggplot2], **knitr** [@R-knitr; @knitr2015; @knitr2014] y **tidyverse** [@tidyverse2019]. Para realizar las pruebas estadísticas, hemos utilizado paquetes nuevos que no se dieron en clase. Los hemos instalado porque nos permiten realizar otras pruebas estadísticas que nos son de utilidad con nuestros datos. Con el paquete **<span style="color:blue">vegan</span>** [@R-vegan] usamos, por ejemplo, la función **adonis2** para hacer **PERMANOVAS** y con el paquete **<span style="color:blue">tseries</span>** [@R-tseries] utilizamos la prueba de normalidad **Jarque-Bera**. Además utilizamos el paquete **<span style="color:blue">stats</span>**, (con funciones cómo **shapiro.test** y **wilcox.test**) que ya viene preinstalado y cargado en R.  
+
+
+Tengo ya los paquetes que serán de utilidad, por lo que ahora obtengo mi dataframe procesado.
+
+<br>
+
+## Obtención del dataframe
+
+Al visualizar la información de cada columna, vemos que hay variables en las que tenemos 1510 datos perdidos, de ahí que se hayan hecho los valores imputados. Analizando las columnas y la cantidad de valores perdidos, hemos eliminado los valores no imputados y hemos seleccionado las variables que serán de utilidad posteriormente. Las variables seleccionadas son las que menos valores perdidos tienen, para así filtrar nuestro dataframe y eliminar las observaciones que tienen datos perdidos. Para conseguir esto, hicimos varias pruebas, de las cuales indicaremos con la que obtuvimos el dataframe de 1920 observaciones.
+
+```{r Obtención del dataframe, echo=TRUE}
+datos <- tree_survival %>% 
+  select(Species,Light,Microbe,Bench,Time,Event,AMF_Imp,PHN_Imp,NSC_Imp,LIG_Imp)
+
+datos %>% summary()
+
+#Vemos que el valor de datos perdidos más alto es de 480. Por lo que eliminamos las observaciones que poseen valores perdidos.
+
+datos_pr <-  drop_na(datos)
+```
+Debemos de tener ya el dataframe sin datos perdidos, nuestro data frame actual tiene: **<span style="color:blue">`r nrow(datos_pr)` observaciones</span>** y **<span style="color:blue">`r ncol(datos_pr)` variables</span>**. Comprobamos si hay datos perdidos en el dataframe.
+
+```{r Visualizar datos perdidos, echo=TRUE}
+datos_pr %>% 
+  is.na() %>% 
+  summary()
+```
+Tras esto observamos que no poseemos datos perdidos en ninguna variable y, por tanto, tenemos nuestro <span style="color:green">dataframe definitivo</span>. Lo guardamos con una extension **.csv** para utilizarlo posteriormente, leyendo directamente este dataframe.
+
+```{r Guardamos datos procesados, echo=FALSE}
+write.csv(datos_pr, "tree_survival_pr")
+```
+
+<br>
+
+### Hipótesis 
+
+Leyendo el artículo asociado a los datos, hemos obtenido varias hipótesis, las cuales, trataremos de comprobar estadísticamente. Estas hipótesis nos ayudarán a saber porque algunas de las plantas pueden llegar a sobrevivir en mayor proporción en condiciones de poca luz y que factores influyen en esto:   
+
++ **Hipótesis 1**: Existe una relación entre las concentraciones de **fenoles** y carbohidratos no estructurales (**NSC**) y la supervivencia de las plantas en sombra. 
+
++ **Hipótesis 2**: Los **AMF** producen en la planta un aumento en la concentración de **NSC**, y los microorganismos patógenos, un aumento en la concentración de fenoles.
+
+<br>
+
+## Análisis de datos
+
+### Hipótesis 1
+
+#### Hipótesis 1.1
+
+Como en el caso de *Event*, los datos están como 0 y 1, modificamos esa columna para obtener como datos "Vivo" y "Muerto", en el caso de que sea necesario para una variable, también filtramos los datos para que sólo nos de las plantas crecidas en sombra, ya que sólo en estas condiciones los fenoles y NSCs suponen una supuesta ventaja en la supervivencia.
+
+```{r Creo dataframe para la hipótesis 1, echo=FALSE}
+hipo1 <- datos_pr %>% select(PHN_Imp,NSC_Imp, Event, Light) %>% 
+  mutate(Event = if_else(Event == 1, "Dead", "Alive")) %>% # Cambio event para tenerlo más claro
+  filter(Light == "Low")
+```
+
+Para comprobar si hay diferencias en las concentraciones de fenoles en las plantas hacemos dos dataframe con los carbohidratos no estructurales de las plantas muertas y las vivas. Cómo vemos en las siguientes líneas de código hacemos dos dataset para realizar la prueba de **U-Mann-Whitney**, lo que realizamos fue coger los datos de los NSC con if else y sustituir los valores que no pertenzcan al grupo por NA y después eliminar los NA para obtener dos dataframes con diferentes dimensiones.
+
+```{r Creo dataframe de individuos muertos}
+DeadPHN <- hipo1 %>% transmute (Dead = if_else(Event == "Dead", PHN_Imp, NA)) %>% 
+  drop_na()
+#glimpse(DeadPHN)
+```
+
+```{r Creo dataframe de individuos vivos}
+AlivePHN <- hipo1 %>% transmute (Alive = if_else(Event == "Alive", PHN_Imp, NA)) %>% 
+  drop_na()
+#glimpse(AlivePHN)
+```
+
+Sacamos algunos estadísticos para que facilite la observación en primera instancia de posibles diferencias existentes entre ambos grupos. Vemos que las plantas vivas, de media, tienen casi el doble de fenoles que las muertas, lo que nos da una pista de que nuestra hipótesis pueder cierta.
+
+```{r Resumen de los datos según supervivencia, echo=FALSE}
+hipo1 %>% group_by(Event) %>%
+  summarize(Media = mean(PHN_Imp),
+         Max = max(PHN_Imp),
+         Min = min(PHN_Imp))
+```
+
+Antes de empezar tenemos que saber si las variables siguen una distribución normal, para ello realizmos el test de normalidad **Shapiro-Wilk** del paquete **stats**:
+
+```{r Análisis de distribución de individuos muertos,echo=FALSE}
+shapiro.test(DeadPHN$Dead)
+```
+
+```{r  Análisis de distribución de individuos vivos,echo=FALSE}
+shapiro.test(AlivePHN$Alive)
+```
+
+En el test ha salido un p-valor menor a 0,05 por lo que descartamos la hipótesis nula y aceptamos la alternativa, los datos no se distribuyen normalmente.
+
+Comprobamos, visualmente, que las variables no son normales, representamos la distribución de los datos con un histograma:
+```{r  Representación gráfica de la distribución de fenoles, echo=FALSE, message=FALSE, warning=FALSE}
+hipo1 %>% ggplot(aes(x = PHN_Imp, fill = Event )) +
+  geom_histogram(color = "black") +
+  labs(x= "Concentración de fenoles",y = "Número de individuos") +
+  scale_x_continuous(
+    breaks = seq(-0.5, 0.6, by = 0.10), # Aquí estamos poniendo cada cuanto se ponen las marcas en el eje x
+    limits = c(-0.5, 0.6))+ #establecemos aquí los límites del eje x
+  ggtitle("Distribución de fenoles") +  
+  theme(plot.title = element_text(hjust = 0.5, size = 16), #Aquí ajustamos algunos parámetros del gráfico
+        axis.title.x = element_text(hjust = 0.5),
+        panel.border = element_rect(colour = "black", linewidth = 0.7, fill = NA)) 
+```
+
+<!-- Los valores negativos de phenolics es porque son valores imputados y, por tanto, al azar -->
+
+Ninguno sigue una distribución normal, por lo que tenemos que hacer una prueba no paramétrica, en este caso, de U-Mann-Whitney para comparar los dos grupos.
+
+Con la prueba de U-Mann-Whitney, comparamos estadísticamente la diferencia entre los fenoles de los vivos y los muertos, en condiciones de sombra y obtenemos de resultado que no hay diferencia significativa entre los fenoles de vivos y muertos (p < 0.05), por lo que hay diferencias significativas en la concentración de fenoles confirmando parcialmente nuestra hipótesis. 
+
+```{r Diferencias en la concentración de fenoles, echo=FALSE}
+wilcox.test(x = DeadPHN$Dead, y = AlivePHN$Alive)
+```
+
+Se elabora la siguiente gráfica para comprobar que sí se presentan diferencias visuales notables.
+
+```{r  Análisis visual de concentración de fenoles, echo=FALSE, message=FALSE, warning=FALSE}
+hipo1 %>% ggplot(aes(y = PHN_Imp, x = Event, col = Event )) +
+  geom_jitter(width = 0.2, show.legend = F, alpha = 0.6) +
+  geom_boxplot(show.legend = F, width = 0.55) +
+  labs(x="Supervivencia", y="Concentración de fenoles") +
+  theme(axis.title.x = element_text(hjust = 0.5), #Ajustamos algunos parámetros del gráfico para hacerlo más bonito
+        panel.border = element_rect(colour = "black", linewidth = 0.7, fill = NA),
+        panel.background = element_blank())
+```
+
+**Podemos ver diferencias notables, la concentración de fenoles es visualmente más grande en plantas vivas.**
+
+<br>
+
+#### Hipótesis 1.2
+
+Ahora para comprobar si hay diferencias en las concentraciones de NSC en las plantas hacemos dos dataframe con los carbonos no estructurales de las plantas muertas y las vivas. Cómo vemos en las siguientes líneas de código hacemos dos dataset para realizar la prueba de **U-Mann-Whitney**, lo que realizamos fue coger los datos de los fenoles con **if_else** y sustituir los valores que no pertenzcan al grupo por NA y después eliminar los NA para obtener dos dataframes con diferentes dimensiones.
+
+```{r Creo variable de individuos muertos}
+DeadNSC <- hipo1 %>% transmute (Dead = if_else(Event == "Dead", NSC_Imp, NA)) %>% 
+  drop_na() 
+```
+```{r Creo variable de individuos vivos}
+AliveNSC <- hipo1 %>% transmute (Alive = if_else(Event == "Alive", NSC_Imp, NA)) %>% 
+  drop_na()
+```
+
+Para que se aprecie más fácilmente las diferencias que puedan existir entre ambos grupos, se exponen los siguientes estadícos, vemos que las medias son algo parecidas, sin embargo, en plantas vivas el NSC es de media 0,5 más alto. Más tarde comprobaremos estadíticamente si hay diferencias entre los grupos.
+
+```{r Resumen de datos según supervivencia_2, echo=FALSE}
+hipo1 %>% group_by(Event) %>% #Agrupamos por Event
+  summarize(Media = mean(NSC_Imp), #Ponemoslos gráficos que queramos
+            Max = max(NSC_Imp),
+            Min = min(NSC_Imp))
+```
+
+Antes de empezar, tenemos que saber si las variables siguen una distribución normal. Para ello, utilizamos el test de normalidad de **Shapiro-Wilk**:
+
+```{r Análisis de distribución de individuos muertos_2,echo=FALSE}
+shapiro.test(DeadNSC$Dead)
+```
+
+```{r Análisis de distribución de individuos vivos_2,echo=FALSE}
+shapiro.test(AliveNSC$Alive)
+```
+
+En ambos tests se ha obtenido un p-valor inferior a 0,05, por lo que aceptamos la hipótesis alternativa, que afirma que los datos no se distribuyen normalmente.
+
+Comprobamos, visualmente, que las variables no son normales:
+```{r Representación gráfica de la concentración de carbohidratos, echo=FALSE, message=FALSE, warning=FALSE}
+hipo1 %>% ggplot(aes(x = NSC_Imp, fill = Event)) +
+  geom_histogram(color = "black") + 
+  labs(x="Concentración de carbohidratos solubles", y = "Número de individuos") +
+  scale_x_continuous(
+    breaks = seq(0, 20, by = 5), # Aquí estamos poniendo cada cuanto se ponen las marcas en el eje x
+    limits = c(0,20)) +  #establecemos aquí los límites del eje x
+  ggtitle("Distribución de NSCs") +  
+  theme(plot.title = element_text(hjust = 0.5, size = 16),
+        axis.title.x = element_text(hjust = 0.5), #Aquí ajustamos algunos parámetros del gráfico
+        panel.border = element_rect(colour = "black", linewidth = 0.7, fill = NA)) 
+```
+
+Parece que pueden seguir una distribución normal según el gráfico, probamos con el test de normalidad **Jarque Bera**, así nos aseguraremos de que los datos no siguen, de ningún modo, una distribución normal.
+```{r Análisis de la distribución de los datos (Individuos muertos), echo=FALSE}
+jarque.bera.test(DeadNSC$Dead)
+```
+```{r Análisis de la distribución de los datos (Individuos vivos), echo=FALSE}
+jarque.bera.test(AliveNSC$Alive)
+```
+
+Sigue saliendo significativo el p-valor, por lo que consideramos una distribución no normal de los datos, de ahí que realicemos U-Mann-Whitney:
+
+```{r Diferencias de la concentración de carbohidratos, echo=FALSE}
+wilcox.test(x = DeadNSC$Dead, y = AliveNSC$Alive)
+```
+Los resultados demuestran que, estadísticamente, las plantas muertas y vivas tienen diferencias significativas en sus concentraciones de carbonos no estructurales (p < 0,05). Lo que respalda nuestra hipótesis.
+
+Se ejecuta una gráfica para distinguir si hay una diferencia visual entre las plantas vivas y muertas. Vemos que los NSC en los vivos es mayor que en muertos, confirmando nuestra hipótesis.
+```{r Representación gráfica de la concentración de carbohidratos según supervivencia, echo=FALSE, message=FALSE, warning=FALSE}
+hipo1 %>% ggplot(aes(y = NSC_Imp, x = Event, col = Event )) +
+  geom_jitter(width = 0.2, show.legend = F, alpha = 0.6) +
+  geom_boxplot(show.legend = F, width = 0.55) + 
+  labs(x="Supervivencia", y="Concentración de carbohidratos")
+  theme(axis.title.x = element_text(hjust = 0.5),
+        panel.border = element_rect(colour = "black", linewidth = 0.7, fill = NA),
+        panel.background = element_blank())
+```
+
+<br>
+
+#### Comparación de las hipótesis 1.1 y 1.2
+
+Por último, realizamos un *Permutational analysis of variance* o *Permanova* (datos no paramétricos) para asegurarnos de que hay diferencias en la concentración de fenoles y NSC entre vivas y muertas en conjunto. Este análisis nos ayudará a saber si en conjunto hay diferencias entre las variables y los grupos.  
+
+```{r Análisis no paramétrico para comparar las variables}
+adonis2( hipo1[, c("PHN_Imp","NSC_Imp")] ~ Event, data = hipo1, method = "euclidean", permutations = 99) %>% 
+  print()
+```
+
+El resultado del Permanova demuestra que se pueden diferenciar ambos grupos (p < 0.05) en cuanto las concentraciones de fenoles y NSC y cómo hemos visto las plantas vivas demuestran tener mayor cantidad de estos compuestos. Esto confirma nuestra hipótesis, los fenoles y NSC influyen positivamente a la supervivencia en sombra.
+
+<br>
+
+### Hipótesis 2
+
+Para la segunda hipótesis planteada, se van a comprobar si los tratamientos con los microorganismos influyen positivamente en la concentración de fenoles y NSCs, "más AMF (hongos micorrízicos arbusculares) , más NSC y más patógenos, más fenoles" Los tratamientos son cuatro, como se indica al principio:
+En el control, no hay microorganismos en el sustrato. En el *Small*, sólo hay microorganismos patógenos. En el *large*, sólo hay AMF. Y el *combined* es una combinación de *small* y *large*, AMF y patógenos.
+
+Para facilitar el análisis haremos un dataset con las variables de interés.
+
+```{r Creación de variable para la hipótesis 2, echo=FALSE}
+hipo2 <- datos_pr %>% select(PHN_Imp,NSC_Imp, Event, Microbe) %>% 
+  mutate(Event = if_else(Event == 1, "Dead", "Alive")) %>% 
+  filter(Event == "Alive")
+head(hipo2)
+```
+
+Para verificar qué tan diferentes son los grupos, a primera vista, recurrimos a unos estadísticos básicos, y vemos que, de media, hay más fenoles en el tratamiento con tan sólo **AMF**, pero, en general, son bastante parecidos en concentración.
+
+<br>
+
+#### Hipótesis 2.1
+
+```{r Resumen de los datos, echo=FALSE}
+hipo2 %>% group_by(Microbe) %>% # Comprobamos qué tan diferentes son los grupos a primera vista.
+  summarize(Media = mean(PHN_Imp),
+            Max = max(PHN_Imp),
+            Min = min(PHN_Imp))
+```
+ 
+Visualmente, vemos que el tratamiento que tienen los AMF es el que tiene más fenoles, algo que no concuerda con nuestra hipótesis, basada en el artículo. Aun así, lo seguiremos comprobando más adelante.
+ 
+```{r Representación gráfica de la concentración de fenoles según tratamiento, echo=FALSE, message=FALSE, warning=FALSE}
+hipo2 %>% 
+  ggplot(aes(y = PHN_Imp, x = Microbe, col = Microbe )) +
+  geom_jitter(width = 0.2, show.legend = F, alpha = 0.6) +
+  geom_boxplot(show.legend = F, width = 0.55) + # Elimino la leyenda.
+  labs(x="Tratamiento con microorganismos", y="Concentración de fenoles")+
+  theme(axis.title.x = element_text(hjust = 0.5),
+        panel.border = element_rect(colour = "black", linewidth = 0.7, fill = NA),
+        panel.background = element_blank()) 
+```
+
+Ejecutamos un *Permanova* (datos no paramétricos) para asegurarnos de que sí hay diferencias en la concentración de fenoles entre los tratamientos. 
+
+```{r Diferencias en la concentración de fenoles según tratamiento}
+adonis2( hipo2$PHN_Imp ~ Microbe, data = hipo2, method = "euclidean" # Utilizamos este método porque es el más indicado para datos negativos (PHN_Imp)
+         , permutations = 99) %>% print()
+```
+
+Podemos ver que hay diferencias significativas entre los grupos (p-valor < 0,05), lo que confirma que, en cuanto a la concentración de fenoles, los tratamientos muestran diferencias. Y es el tratamiento con AMF el que más fenoles tiene, según las pruebas anteriores.
+
+<br>
+
+#### Hipótesis 2.2
+Ahora haremos lo mismo, pero con los NSC, para comprobar nuestra hipótesis:
+
+```{r Resumen de los datos_2, echo=FALSE}
+hipo2 %>% group_by(Microbe) %>% # Comprobamos qué tan diferentes son los grupos a primera vista.
+  summarize(Media = mean(NSC_Imp),
+            Max = max(NSC_Imp),
+            Min = min(NSC_Imp))
+```
+Vemos que quienes tienen mayor concentración de media de NSC son las muestras con el tratamiento control, lo cual, contradice nuestra hipótesis.
+
+Hacemos un gráfico para ver las diferencias visuales entre los tratamientos, y observamos que el tratamiento control es el que más NSC tiene.
+
+```{r Representación gráfica de la concentración de carbohidratos según tratamiento, message=FALSE, echo=FALSE}
+hipo2 %>% ggplot(aes(y = NSC_Imp, x = Microbe, col = Microbe )) +
+  geom_jitter(width = 0.2, show.legend = F, alpha = 0.6) +
+  geom_boxplot(show.legend = F, width = 0.55) + 
+  labs(y="Concentración de carbohidratos solubles", x="Tratamiento con microorganismos") +
+  theme(axis.title.x = element_text(hjust = 0.5), 
+        panel.border = element_rect(colour = "black", linewidth = 0.7, fill = NA),
+        panel.background = element_blank()) 
+```
+
+A continuación, hacemos un **Permanova** (NSC sigue siendo no paramétrica) para comprobar si hay diferencias significativas entre la concentración de NSC y los tratamientos.
+
+```{r Diferencias en la concentración de carbohidratos según tratamiento}
+adonis2( hipo2$NSC_Imp ~ Microbe, data = hipo2, method = "euclidean", permutations = 99) %>% print()
+```
+
+El p-valor es menor que 0,05, por lo que hay diferencias entre los tratamientos, en base a los NSC. Y es el tratamiento control el que más tiene, según las pruebas anteriores.  
+
+#### Comparación de hipótesis 2.1 y 2.2.
+Cómo último paso, haremos un **Permanova** para ver si, en conjunto, (con fenoles y NSC) los tratamientos son estadíticamente diferentes.
+
+```{r Análisis no paramétrico para comparar variables_2}
+adonis2( hipo2[, c("PHN_Imp","NSC_Imp")] ~ Microbe, data = hipo2, method = "euclidean", permutations = 99) %>% print()
+```
+Podemos comprobar que, efectivamente, los diferentes tratamientos muestran diferencias notables (p < 0.05).
+
+A continuación, comprobaremos si los tratamientos *large* y *small* son diferentes entre sí, ya que son los tratamientos en los que se basa esta hipótesis. Para ello, creamos un nuevo dataset donde filtraremos los datos de los tratamientos objetivo.
+
+```{r Filtramos tratamientos, echo=TRUE, message=FALSE}
+hipo2.1 <- datos_pr %>% select(PHN_Imp,NSC_Imp, Event, Microbe) %>% 
+  mutate(Event = if_else(Event == 1, "Dead", "Alive")) %>% 
+  filter(Event == "Alive") %>% filter(Microbe %in% c("Large" , "Small"))
+head(hipo2.1)
+```
+
+Al igual que antes, al tener que hacer un **U-Mann-Whitney** (fenoles no paramétricos), tenemos que hacer dos datasets, en este caso, con los fenoles.
+
+```{r Creamos variable de tratamiento "small", echo=TRUE}
+smallPHN <- hipo2.1 %>% transmute (small = if_else(Microbe == "Small", PHN_Imp, NA)) %>% 
+  drop_na()
+```
+```{r Creamos variable de tratamiento "large", echo=TRUE}
+largePHN <- hipo2.1 %>% transmute (large = if_else(Microbe == "Large", PHN_Imp, NA)) %>% 
+  drop_na()
+```
+
+Hacemos el test no paramétrico de **U-Mann-Whitney** y obtenemos un p-valor inferior a 0,05, por lo que aceptamos la hipótesis alternativa, que afirma que los tratamientos son diferentes en cuanto a los fenoles.
+
+```{r Diferencias entre las variables, echo=FALSE, message=FALSE}
+wilcox.test(x = smallPHN$small, y = largePHN$large)
+```
+
+Ahora hacemos un gráfico donde vemos que el tratamiento *large* tiene más fenoles que el *small* (con patógenos), lo cual, contradice nuestra hipótesis.
+
+```{r Representación gráfica tratamientos large y small, message=FALSE, echo=FALSE}
+hipo2.1 %>% ggplot(aes(y = PHN_Imp, x = Microbe, col = Microbe )) +
+  geom_jitter(width = 0.2, show.legend = F, alpha = 0.6) +
+  geom_boxplot(show.legend = F, width = 0.55) + # Elimino la leyenda. 
+  labs(x="Tratamiento con microorganismos", y="Concentración de fenoles")+
+  theme(axis.title.x = element_text(hjust = 0.5),
+        panel.border = element_rect(colour = "black", linewidth = 0.7, fill = NA),
+        panel.background = element_blank()) 
+```
+
+A continuación, hacemos lo mismo pero con los NSC:
+
+Al igual que antes al tener que hacer un **U-Mann-Whitney** (NSC no paramétricos) tenemos que hacer dos datasets, en este caso con los NSC.
+
+```{r Creo variable 2.2.1, echo=TRUE}
+smallNSC <- hipo2.1 %>%  transmute (small = if_else(Microbe == "Small", NSC_Imp, NA)) %>% 
+  drop_na()
+```
+
+```{r Creo variable 2.2.2, echo=TRUE}
+largeNSC <- hipo2.1 %>% transmute (large = if_else(Microbe == "Large", NSC_Imp, NA)) %>% 
+  drop_na()
+```
+
+Hacemos el test no paramétrico de **U-Mann-Whitney** y obtenemos un p-valor superior a 0.05, por lo que aceptamos la hipótesis nula. Esto implica que los tratamientos no son diferentes en cuanto los NSC, es decir, los NSC no cambian significativamente entre los tratamientos con patógenos y AMF.
+
+```{r Análisis no parametrico NSC, echo=FALSE, message=FALSE}
+wilcox.test(x = smallNSC$small, y = largeNSC$large)
+```
+
+Visualmente, se aprecian diferencias: *large* (AMF) tiene, ligeramente, más NSC, pero esta diferencia no es estadísticamente significativa.   
+
+```{r Representación gráfica NSC por tratamiento, message=FALSE, echo=FALSE}
+hipo2.1 %>% ggplot(aes(y = NSC_Imp, x = Microbe, col = Microbe )) +
+  geom_jitter(width = 0.2, show.legend = F, alpha = 0.6) +
+  geom_boxplot(show.legend = F, width = 0.55) + # Elimino la leyenda.
+  labs(x="Tratamiento con microorganismos", y="Concentración de carbohidratos")
+  theme(axis.title.x = element_text(hjust = 0.5),
+        panel.border = element_rect(colour = "black", linewidth = 0.7, fill = NA),
+        panel.background = element_blank()) 
+```
+
+Finalmente, haremos una **Correlación de Spearman** (por ser datos no normales) para saber qué relación tienen las variables ***AMF_Imp*** con ***NSC_Imp*** y ***PHN_Imp***. ***AMF_Imp*** es el porcentaje de inclusiones de hongos micorrízicos arbusculares en las raíces de las plantas, pues según el artículo, en presencia de estos AMF, las plantas presentan más ***NSC_Imp***, algo que comprobaremos ahora. También lo hacemos con ***PHN_IMP*** (fenoles), ya que en los análisis anteriores, el tratamiento con AMF tuvo más fenoles.
+
+Primero lo hacemos con los fenoles y vemos que tiene una correlación débil y positiva. Lo que quiere decir que cuantos más AMF, más fenoles.
+
+```{r Regresión lineal no paramétrica, echo=FALSE, message=FALSE}
+datos_pr %>% summarise("Correlacíon entre fenoles y porcentaje de AMF" = cor(y = PHN_Imp, x = AMF_Imp, method = "spearman"))
+```
+
+En el gráfico podemos ver esta relación de los datos y cómo aumentan los fenoles con los datos.
+
+```{r Relación AMF y PHN, echo=FALSE, message=FALSE}
+ datos_pr %>% ggplot(aes(y = PHN_Imp, x = AMF_Imp )) +
+  geom_jitter(alpha = 0.6) +
+  ggtitle("Relación estre AMF y fenoles") +
+  labs(x = "% Inclusiones micorrízicas", y = "Concentración de fenoles") +
+  geom_smooth(method = "lm")
+
+```
+
+Cómo respaldaba nuestra hipótesis, hay una relación positiva entre los AMF y la concentración de NSC, aunque no es muy fuerte.
+
+```{r Regresión lineal no paramétrica 2, echo=FALSE, message=FALSE}
+datos_pr %>% summarise("Correlacíon entre NSC y porcentaje de AMF" = cor(y = NSC_Imp, x = AMF_Imp, method = "spearman"))
+```
+
+En el gráfico podemos ver esta relación de los datos y cómo aumenta el NSC con los datos.
+
+```{r Relación AMF y NSC, echo=FALSE, message=FALSE}
+ datos_pr %>% ggplot(aes(y = NSC_Imp, x = AMF_Imp )) +
+  geom_jitter(alpha = 0.6) +
+  ggtitle("Relación estre AMF y NSC") +
+  labs(x = "% Inclusiones micorrízicas", y = "Concentración de carbohidratos solubles") +
+  geom_smooth(method = "lm")
+
+```
+
+### Conclusiones 
+
+Tras los análisis podemos concluir que una mayor concentración de fenoles y  carbohidratos no estructurales suponen un aumento de la supervivencia en las plantas. Confirmando nuestra primera hipótesis. Sin embargo, en el caso de la segunda hipótesis, a través de los análisis, sólo se cumplió que el AMF influye positivamente en la concentración de NSC, en cambio los patógenos no mostraron un aumento considerable de fenoles, siendo estos más abundantes con AMF. Descubrimos sin embargo que los AMF aumentan las concentraciones de NSC y fenoles, y con nuestra primera hipótesis podemos concluir que la presencia de hongos micorrízicos arbusculares aumenta la supervivencia de las plantas. Con esta información se podría plantear mejoras en la supervivencia de plántulas en sombras con la adición de estos microorganismos.
+
+### Bibliografía
